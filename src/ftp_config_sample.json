@@ -1,0 +1,6 @@
+{
+  "host": "ftp.example.com",
+  "username": "your-ftp-username",
+  "password": "your-ftp-password",
+  "remote_path": "/public_html/podcast_feed.xml"
+}

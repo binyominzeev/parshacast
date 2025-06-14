@@ -1,0 +1,8 @@
+# Initial lecture data for the ParshaCast project
+# This file will be populated with lecture details in the following format:
+# id,title,author,date,url,description
+1,Introduction to Parsha, Rabbi Cohen, 2023-01-01, http://example.com/lecture1, A brief introduction to the weekly Parsha.
+2,Deep Dive into Vayikra, Rabbi Levy, 2023-01-08, http://example.com/lecture2, An in-depth exploration of the book of Vayikra.
+3,Lessons from Shemot, Rabbi Goldstein, 2023-01-15, http://example.com/lecture3, Key lessons and insights from the book of Shemot.
+4,Understanding the Mitzvot, Rabbi Friedman, 2023-01-22, http://example.com/lecture4, A discussion on the significance of Mitzvot in daily life.
+5,The Story of Creation, Rabbi Schwartz, 2023-01-29, http://example.com/lecture5, An analysis of the creation narrative in the Torah.
