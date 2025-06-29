@@ -18,19 +18,25 @@ RABBIS = [
     {"id": 82281, "name": "Rabbi Yoni Mandelstam"},
     {"id": 80254, "name": "Rabbi Chaim Marcus"},
     {"id": 82280, "name": "Rabbi Jonathan Muskat"},
-    {"id": 80288, "name": "Rabbi Avishai David"},
+    {"id": 80195, "name": "Rabbi Michael Taubes"},
+#    {"id": 80288, "name": "Rabbi Avishai David"},
 ]
-SUBCATEGORY_ID = 234553  # Change this if you want a different subcategory
+SUBCATEGORY_ID = 234510  # Change this if you want a different subcategory
+PROJECT_ROOT = "/home/bz/Desktop/aktualis/projects/parshacast"
 
 def fetch_lectures():
     lectures = []
     for rabbi in RABBIS:
         url = BASE_URL.format(teacher_id=rabbi["id"], subcategory_id=SUBCATEGORY_ID)
+        print(f"Fetching for {rabbi['name']} ({rabbi['id']}): {url}")  # Verbose: show URL
         try:
             response = requests.get(url)
+            print(f"Status code: {response.status_code}")  # Verbose: show status
             response.raise_for_status()
             root = ET.fromstring(response.content)
-            for item in root.findall(".//item"):
+            items = root.findall(".//item")
+            print(f"Found {len(items)} items for {rabbi['name']}")  # Verbose: show count
+            for item in items:
                 title = item.findtext("title", "").replace("<![CDATA[", "").replace("]]>", "")
                 link = item.findtext("link", "").replace("<![CDATA[", "").replace("]]>", "")
                 description = item.findtext("description", "").replace("<![CDATA[", "").replace("]]>", "")
@@ -42,11 +48,13 @@ def fetch_lectures():
                 })
         except Exception as e:
             print(f"Error fetching/parsing for {rabbi['name']}: {e}")
+    print(f"Total lectures fetched: {len(lectures)}")  # Verbose: total count
     return lectures
 
 def fetch_details(lectures, max_count=None):
     print("Fetching details for each lecture...")
-    total = len(lectures) if max_count is None else min(len(lectures), max_count)
+    total = len(lectures)   
+    #total = len(lectures) if max_count is None else min(len(lectures), max_count)
     for idx, lec in enumerate(lectures[:total]):
         try:
             response = fetch_url_with_retries(lec["link"])
@@ -96,7 +104,7 @@ def fetch_details(lectures, max_count=None):
 
     print("\nDetails fetching complete.")
 
-def generate_podcast_xml(lectures, output_path):
+def generate_podcast_xml(lectures, output_path=None):
     import xml.etree.ElementTree as ET
     from xml.dom import minidom
     from email.utils import format_datetime
@@ -105,7 +113,6 @@ def generate_podcast_xml(lectures, output_path):
     ITUNES_NS = "http://www.itunes.com/dtds/podcast-1.0.dtd"
     ET.register_namespace('itunes', ITUNES_NS)
 
-    # Do NOT set 'xmlns:itunes' here, let ElementTree handle it
     rss = ET.Element('rss', {'version': '2.0'})
     channel = ET.SubElement(rss, 'channel')
     ET.SubElement(channel, 'title').text = "My Shiurim Podcast"
@@ -118,23 +125,20 @@ def generate_podcast_xml(lectures, output_path):
         ET.SubElement(item, 'title').text = lec.get('title', '')
         ET.SubElement(item, 'link').text = lec.get('audio_url', '')
         ET.SubElement(item, 'guid').text = lec.get('audio_url', '')
-        # pubDate: use current timestamp
         now = datetime.now(timezone.utc)
         pub_date = format_datetime(now)
         ET.SubElement(item, 'pubDate').text = pub_date
-        # enclosure
         enclosure = ET.SubElement(item, 'enclosure')
         enclosure.set('url', lec.get('audio_url', ''))
         enclosure.set('type', 'audio/mpeg')
-        # duration (itunes)
         duration = lec.get('duration', '')
         ET.SubElement(item, '{http://www.itunes.com/dtds/podcast-1.0.dtd}duration').text = duration
-        # author
         ET.SubElement(item, 'author').text = lec.get('rabbi', '')
 
-    # Pretty print
     xml_str = ET.tostring(rss, encoding='utf-8')
     pretty_xml = minidom.parseString(xml_str).toprettyxml(indent="  ", encoding='utf-8')
+    if output_path is None:
+        output_path = f"{PROJECT_ROOT}/data/podcast_feed.xml"
     with open(output_path, "wb") as f:
         f.write(pretty_xml)
 
@@ -161,7 +165,11 @@ def fetch_url_with_retries(url, retries=3, timeout=5, backoff_factor=1, verbose=
                     print("All retry attempts failed.")
     return None
 
-def upload_via_ftp(local_file, config_path="ftp_config.json"):
+def upload_via_ftp(local_file=None, config_path=None):
+    if local_file is None:
+        local_file = f"{PROJECT_ROOT}/data/podcast_feed.xml"
+    if config_path is None:
+        config_path = f"{PROJECT_ROOT}/ftp_config.json"
     if not os.path.exists(config_path):
         print(f"FTP config file '{config_path}' not found. Skipping upload.")
         return
@@ -178,8 +186,9 @@ def upload_via_ftp(local_file, config_path="ftp_config.json"):
 
 def main():
     lectures = fetch_lectures()
-    fetch_details(lectures, max_count=3)  # or remove max_count for full run
-    output_file = "../data/podcast_feed.xml"
+    #fetch_details(lectures, max_count=3)
+    fetch_details(lectures)
+    output_file = f"{PROJECT_ROOT}/data/podcast_feed.xml"
     generate_podcast_xml(lectures, output_file)
     print(f"Podcast XML generated with {len(lectures)} lectures.")
     upload_via_ftp(output_file)
